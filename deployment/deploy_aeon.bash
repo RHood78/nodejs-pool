@@ -8,36 +8,37 @@ if [[ `whoami` == "root" ]]; then
 fi
 ROOT_SQL_PASS=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 CURUSER=$(whoami)
-sudo timedatectl set-timezone Etc/UTC
+echo "Etc/UTC" | sudo tee -a /etc/timezone
+sudo rm -rf /etc/localtime
+sudo ln -s /usr/share/zoneinfo/Zulu /etc/localtime
+sudo dpkg-reconfigure -f noninteractive tzdata
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
 sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password $ROOT_SQL_PASS"
 sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $ROOT_SQL_PASS"
 echo -e "[client]\nuser=root\npassword=$ROOT_SQL_PASS" | sudo tee /root/.my.cnf
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y install git python-virtualenv python3-virtualenv curl ntp build-essential screen cmake pkg-config libboost-all-dev libevent-dev libunbound-dev libminiupnpc-dev libunwind8-dev liblzma-dev libldns-dev libexpat1-dev libgtest-dev mysql-server lmdb-utils libzmq3-dev
-cd ~
-git clone https://github.com/Snipa22/nodejs-pool.git  # Change this depending on how the deployment goes.
 cd /usr/src/gtest
 sudo cmake .
 sudo make
 sudo mv libg* /usr/lib/
 cd ~
-sudo systemctl enable ntp
-cd /usr/local/src
-sudo git clone https://github.com/monero-project/monero.git
-cd monero
-sudo git checkout v0.11.1.0
-curl https://raw.githubusercontent.com/Snipa22/nodejs-pool/master/deployment/monero_daemon.patch | sudo git apply -v
-sudo make -j$(nproc)
-sudo cp ~/nodejs-pool/deployment/monero.service /lib/systemd/system/
-sudo useradd -m monerodaemon -d /home/monerodaemon
-BLOCKCHAIN_DOWNLOAD_DIR=$(sudo -u monerodaemon mktemp -d)
-sudo -u monerodaemon wget --limit-rate=50m -O $BLOCKCHAIN_DOWNLOAD_DIR/blockchain.raw https://downloads.getmonero.org/blockchain.raw
-sudo -u monerodaemon /usr/local/src/monero/build/release/bin/monero-blockchain-import --input-file $BLOCKCHAIN_DOWNLOAD_DIR/blockchain.raw --batch-size 20000 --database lmdb#fastest --verify off --data-dir /home/monerodaemon/.bitmonero
-sudo -u monerodaemon rm -rf $BLOCKCHAIN_DOWNLOAD_DIR
-sudo systemctl daemon-reload
-sudo systemctl enable monero
-sudo systemctl start monero
+#sudo systemctl enable ntp
+#cd /usr/local/src
+#sudo git clone https://github.com/aeonix/aeon.git
+#cd aeon
+#sudo git checkout v0.9.14.0
+#sudo make -j$(nproc)
+#sudo cp ~/nodejs-pool/deployment/aeon.service /lib/systemd/system/
+#sudo useradd -m aeondaemon -d /home/aeondaemon
+#sudo -u aeondaemon mkdir /home/aeondaemon/.aeon
+#BLOCKCHAIN_DOWNLOAD_DIR=$(sudo -u aeondaemon mktemp -d)
+#sudo -u aeondaemon wget --limit-rate=50m -O $BLOCKCHAIN_DOWNLOAD_DIR/blockchain.bin http://74.208.156.45/blockchain.raw
+#sudo -u aeondaemon mv $BLOCKCHAIN_DOWNLOAD_DIR/blockchain.bin /home/aeondaemon/.aeon/blockchain.bin
+#sudo -u aeondaemon rm -rf $BLOCKCHAIN_DOWNLOAD_DIR
+#sudo systemctl daemon-reload
+#sudo systemctl enable aeon
+#sudo systemctl start aeon
 curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.0/install.sh | bash
 source ~/.nvm/nvm.sh
 nvm install v6.9.2
